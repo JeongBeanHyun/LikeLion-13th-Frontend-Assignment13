@@ -10,12 +10,14 @@ function App() {
   });
   const [isOpen, setIsOpen] = useState(null);
   const [level, setLevel] = useState(8);
+  const [zoom, setZoom] = useState(false);
 
   const [shelters, setShelters] = useState([]);
   const SERVICE_KEY = import.meta.env.VITE_ANIMAL_SHELTER_API_KEY;
   const SHELTER_API = "https://openapi.gg.go.kr/OrganicAnimalProtectionFacilit";
   const MARKER_IMAGE =
     "https://png.pngtree.com/png-vector/20240722/ourmid/pngtree-happy-puppy-icon-png-image_13186551.png";
+  const LEVEL = 3;
 
   useEffect(() => {
     const shelterData = async () => {
@@ -31,6 +33,7 @@ function App() {
           addr: i.REFINE_ROADNM_ADDR,
           lat: Number(i.REFINE_WGS84_LAT),
           lng: Number(i.REFINE_WGS84_LOGT),
+          capacity: i.ACEPTNC_ABLTY_CNT,
         }));
         setShelters(list);
         console.log("유기동물보호소", list);
@@ -41,15 +44,36 @@ function App() {
     shelterData();
   }, [SHELTER_API, SERVICE_KEY]);
 
-  const handleMarkerClick = (index, lat, lng) => {
+  const handleMoveCenter = (index, lat, lng) => {
     setIsOpen(index);
     setMapCenter({ lat, lng });
-    setTimeout(() => setLevel(6), 400);
+    setZoom(true);
+  };
+
+  const handleCenterChanged = (map) => {
+    if (!zoom) return;
+    const curLevel = map.getLevel();
+    if (curLevel !== LEVEL) {
+      setLevel(LEVEL);
+    }
+    setZoom(false);
+  };
+
+  const handleZoomChanged = (map) => {
+    setLevel(map.getLevel());
   };
 
   return (
     <div className="mapWrapper">
-      <Map className="map" center={mapCenter} level={level} isPanto draggable>
+      <Map
+        className="map"
+        center={mapCenter}
+        level={level}
+        isPanto
+        draggable
+        onCenterChanged={handleCenterChanged}
+        onZoomChanged={handleZoomChanged}
+      >
         <MarkerClusterer averageCenter minLevel={8}>
           {shelters.map((s, index) => (
             <MapMarker
@@ -63,12 +87,12 @@ function App() {
                 size: { width: 120, height: 120 },
               }}
               clickable={true} // 마커를 클릭했을 때 지도의 클릭 이벤트가 발생하지 않도록 설정합니다
-              onClick={() => handleMarkerClick(index, s.lat, s.lng)}
+              onClick={() => handleMoveCenter(index, s.lat, s.lng)}
             >
               {/* MapMarker의 자식을 넣어줌으로 해당 자식이 InfoWindow로 만들어지게 합니다 */}
               {/* 인포윈도우에 표출될 내용으로 HTML 문자열이나 React Component가 가능합니다 */}
               {isOpen === index && (
-                <div style={{ minWidth: "250px" }}>
+                <div style={{ minWidth: "350px", maxHeight: "200px" }}>
                   <img
                     alt="close"
                     width="14"
@@ -84,6 +108,10 @@ function App() {
                   />
                   <div style={{ padding: "5px", color: "#000" }}>{s.name}</div>
                   <div style={{ padding: "5px", color: "#000" }}>{s.addr}</div>
+                  <div style={{ padding: "5px", color: "#00f" }}>
+                    <span style={{ color: "#000" }}>유기동물 수용능력수 :</span>{" "}
+                    {s.capacity}
+                  </div>
                 </div>
               )}
             </MapMarker>
